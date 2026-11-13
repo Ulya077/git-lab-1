@@ -1,19 +1,6 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-venv/
-env/
-
-# Visual Studio / VS Code
-.vs/
-.vscode/
-*.sln
-*.suo
-*.user
-slnxsql*
-
-# OS
-.DS_Store
-Thumbs.db
+﻿__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+setup_lab3.py

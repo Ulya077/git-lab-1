@@ -1,34 +1,75 @@
-from ..combat.models import BattleEvent, BattleReport, Outcome, Side
-from ..hero.hero import Hero
-from ..item.item import Item
-from ..world.models import ExpeditionReport, Rewards
+from __future__ import annotations
+
+from combat.battle_event import BattleEvent
+from combat.battle_report import BattleReport
+from combat.event_type import EventType
+from combat.outcome import Outcome
+from combat.participant import Participant
+from combat.side import Side
+from hero.hero import Hero
+from item.item import Item
+from world.expedition_report import ExpeditionReport
+from world.rewards import Rewards
+
 
 class ConsoleView:
+
     def describe(self, item: Item) -> str:
-        desc = item.get_name()
-        enchants = item.get_enchantments()
-        if enchants: desc += f" [{', '.join(e.name for e in enchants)}]"
-        return f"{desc} ({item.get_description()})"
-    def print_hero(self, hero: Hero):
-        print(f"{hero.get_name()}, {hero.get_hero_class().display_name} {hero.get_level()} ур. | здоровье {hero.get_max_health()} | опыт {hero.get_experience()}/{hero.get_experience_to_next_level()} | золото {hero.get_gold()}")
-        print(f"  Оружие: {self.describe(hero.get_weapon())}")
-        print(f"  Броня:  {self.describe(hero.get_armor())}")
-    def print_report(self, report: ExpeditionReport, location_name: str):
+        description = item.name
+
+        if item.enchantments:
+            names = []
+            for enchantment in item.enchantments:
+                names.append(enchantment.name)
+            description += " [" + ", ".join(names) + "]"
+
+        return description + " (" + item.description + ")"
+
+    def print_hero(self, hero: Hero) -> None:
+        print(
+            f"{hero.name}, {hero.hero_class.display_name} {hero.level} ур. | здоровье {hero.max_health} | "
+            f"опыт {hero.experience}/{hero.experience_to_next_level} | золото {hero.gold}"
+        )
+        print("  Оружие: " + self.describe(hero.weapon))
+        print("  Броня:  " + self.describe(hero.armor))
+
+    def print_report(self, report: ExpeditionReport, location_name: str) -> None:
         battle = report.battle
         print(f"=== {location_name} (сид {report.seed}) ===")
         print(f"{battle.hero.name} встречает врага: {battle.enemy.name} ({battle.enemy.max_health} здоровья)")
+
         for event in battle.events:
-            source = battle.hero if event.source == Side.HERO else battle.enemy
-            target = battle.hero if event.target == Side.HERO else battle.enemy
-            if event.type.value == "HIT":
-                print(f"[раунд {event.round}] {source.name} -> {target.name}: {event.amount} урона, осталось {event.target_health_after}/{target.max_health}")
-            elif event.type.value == "CRITICAL_HIT":
-                print(f"[раунд {event.round}] {source.name} -> {target.name}: КРИТ! {event.amount} урона, осталось {event.target_health_after}/{target.max_health}")
-            elif event.type.value == "DEATH":
-                print(f"{target.name} повержен!")
+            self._print_event(event, battle)
+
+        self._print_rewards(battle, report.rewards)
+
+    def _print_event(self, event: BattleEvent, battle: BattleReport) -> None:
+        source = self._participant(event.source, battle)
+        target = self._participant(event.target, battle)
+
+        if event.type == EventType.HIT:
+            print(
+                f"[раунд {event.round}] {source.name} -> {target.name}: {event.amount} урона, "
+                f"осталось {event.target_health_after}/{target.max_health}"
+            )
+        elif event.type == EventType.CRITICAL_HIT:
+            print(
+                f"[раунд {event.round}] {source.name} -> {target.name}: КРИТ! {event.amount} урона, "
+                f"осталось {event.target_health_after}/{target.max_health}"
+            )
+        elif event.type == EventType.DEATH:
+            print(f"{target.name} повержен!")
+
+    def _print_rewards(self, battle: BattleReport, rewards: Rewards) -> None:
         if battle.outcome == Outcome.DEFEAT:
-            print(f"Поражение... {battle.hero.name} едва уносит ноги и теряет {-report.rewards.gold} золота")
-        else:
-            print(f"Победа! +{report.rewards.experience} опыта, +{report.rewards.gold} золота")
-            if report.rewards.loot: print(f"Добыча: {self.describe(report.rewards.loot)}")
-            if report.rewards.levels_gained > 0: print("Новый уровень!")
+            print(f"Поражение... {battle.hero.name} едва уносит ноги и теряет {-rewards.gold} золота")
+            return
+
+        print(f"Победа! +{rewards.experience} опыта, +{rewards.gold} золота")
+        if rewards.loot is not None:
+            print("Добыча: " + self.describe(rewards.loot))
+        if rewards.levels_gained > 0:
+            print("Новый уровень!")
+
+    def _participant(self, side: Side, battle: BattleReport) -> Participant:
+        return battle.hero if side == Side.HERO else battle.enemy
