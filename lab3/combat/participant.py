@@ -1,5 +1,4 @@
 ﻿from dataclasses import dataclass
-from .combatant import Combatant
 
 @dataclass(frozen=True)
 class Participant:
@@ -7,6 +6,6 @@ class Participant:
     name: str
     max_health: int
 
-    @staticmethod
-    def of(combatant: Combatant) -> "Participant":
-        return Participant(combatant.code, combatant.name, combatant.max_health)
+    @classmethod
+    def of(cls, combatant):
+        return cls(combatant.code, combatant.name, combatant.max_health)

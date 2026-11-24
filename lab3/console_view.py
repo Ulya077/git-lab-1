@@ -1,4 +1,6 @@
-﻿from .combat.battle_event import BattleEvent
+﻿from __future__ import annotations
+
+from .combat.battle_event import BattleEvent
 from .combat.battle_report import BattleReport
 from .combat.event_type import EventType
 from .combat.outcome import Outcome
@@ -9,27 +11,26 @@ from .item.item import Item
 from .world.expedition_report import ExpeditionReport
 from .world.rewards import Rewards
 
-
 class ConsoleView:
 
     def describe(self, item: Item) -> str:
         description = item.name
-
         if item.enchantments:
-            names = []
-            for enchantment in item.enchantments:
-                names.append(enchantment.name)
+            names = [enchantment.name for enchantment in item.enchantments]
             description += " [" + ", ".join(names) + "]"
-
         return description + " (" + item.description + ")"
 
     def print_hero(self, hero: Hero) -> None:
-        print(
-            f"{hero.name}, {hero.hero_class.display_name} {hero.level} ур. | здоровье {hero.max_health} | "
-            f"опыт {hero.experience}/{hero.experience_to_next_level} | золото {hero.gold}"
-        )
+        print(f"{hero.name}, {hero.hero_class.display_name} {hero.level} ур. | здоровье {hero.max_health} | "
+              f"опыт {hero.experience}/{hero.experience_to_next_level} | золото {hero.gold}")
         print("  Оружие: " + self.describe(hero.weapon))
         print("  Броня:  " + self.describe(hero.armor))
+        if hero.achievements:
+            print("  Достижения: " + ", ".join(a.display_name for a in hero.achievements))
+
+    def summarize(self, report: ExpeditionReport, location_name: str, tactic_name: str) -> str:
+        result = "победа" if report.battle.outcome == Outcome.VICTORY else "поражение"
+        return f'{location_name}, {report.battle.enemy.name}, тактика "{tactic_name}": {result}'
 
     def print_report(self, report: ExpeditionReport, location_name: str) -> None:
         battle = report.battle
@@ -46,15 +47,19 @@ class ConsoleView:
         target = self._participant(event.target, battle)
 
         if event.type == EventType.HIT:
-            print(
-                f"[раунд {event.round}] {source.name} -> {target.name}: {event.amount} урона, "
-                f"осталось {event.target_health_after}/{target.max_health}"
-            )
+            print(f"[раунд {event.round}] {source.name} -> {target.name}: {event.amount} урона, "
+                  f"осталось {event.target_health_after}/{target.max_health}")
         elif event.type == EventType.CRITICAL_HIT:
-            print(
-                f"[раунд {event.round}] {source.name} -> {target.name}: КРИТ! {event.amount} урона, "
-                f"осталось {event.target_health_after}/{target.max_health}"
-            )
+            print(f"[раунд {event.round}] {source.name} -> {target.name}: КРИТ! {event.amount} урона, "
+                  f"осталось {event.target_health_after}/{target.max_health}")
+        elif event.type == EventType.EVADE:
+            print(f"[раунд {event.round}] {source.name} -> {target.name}: промах, {target.name} уклоняется")
+        elif event.type == EventType.ABSORB:
+            print(f"[раунд {event.round}] {source.name} -> {target.name}: барьер поглощает {event.amount} урона")
+        elif event.type == EventType.POWER_STRIKE:
+            print(f"[раунд {event.round}] {source.name} бьет в полную силу")
+        elif event.type == EventType.DEFEND:
+            print(f"[раунд {event.round}] {source.name} уходит в оборону")
         elif event.type == EventType.DEATH:
             print(f"{target.name} повержен!")
 
